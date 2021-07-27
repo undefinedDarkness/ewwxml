@@ -1,0 +1,19 @@
+{
+  "name": "playground",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "devDependencies": {},
+  "type": "module",
+  "scripts": {
+    "build": "tsc main.ts --sourcemap"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^16.3.3",
+    "ascii-table": "^0.0.9",
+    "string-replace-async": "^2.0.0",
+    "stringz": "^2.1.0"
+  }
+}
