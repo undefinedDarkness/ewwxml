@@ -1,24 +1,24 @@
 import { readFileSync } from 'fs'
 import { performance } from 'perf_hooks'
-import replaceAsync from 'string-replace-async';
-import {length} from 'stringz'
+import * as builtin from './builtin.js'
 
-import * as _web from './web.js'
-import * as _builtin from './builtin.js'
+export function outputStrings(_: string) {
 
-export const outputMode = (() => {
-	let x = process.argv.find(i => i.startsWith('--mode='))
-	return x ? x.split('=')[1] : fail('Mode not provided!') 
-})()
+	// console.log(_)
+	// TODO: Deal with only one ref
 
-const builtin = (() => {
-	switch (outputMode) {
-		case "web":
-			return _web
-		default:
-			return _builtin
+	// Strip comments and check if is only spaces 
+	if (_.replace(/;;.*/g, '').trim().length == 0) {
+		return _
 	}
-})()
+
+	// Check for variables
+	if (/(?<!'|".*){{.*}}(?!.*'|")/.test(_)) {
+		return '{ "' + _.replaceAll('{{', '" + ').replaceAll('}}', ' + "') + '" }' // a bit of a ugly hack but it saves me work 
+	}
+
+	return '"' + _ + '"'
+}
 
 export const enum Importance {
 	Anywhere = 0,
@@ -28,9 +28,12 @@ export const enum Importance {
 }
 
 export interface Transformer {
-	inline: boolean,
 	importance: Importance;
-	fn: (a:string, args?: string) => Promise<string>;
+	fn: (a:string, state: State, args: Record<string, string>) => string;
+}
+
+export interface State {
+	variables: string[];
 }
 
 export function fail(msg:string, do_exit:boolean=true) {
@@ -42,20 +45,46 @@ export function warn (msg: string) {
 	console.error('\u001b[1m\u001b[33m[WARNING]\u001b[0m '+msg)
 }
 
-function filterObj(obj: Record<string, Transformer>, test_: (a: Transformer) => boolean) {
-	return Object.fromEntries(Object.entries(obj).filter(([_, v]) => test_(v)))
+export function parse_args(args: string) {
+	// console.log(args)
+	let obj: Record<string, string> = {}
+	args.match(/(?:[^\s"]+|"[^"]*")+/g)?.forEach(i => {
+		if (i.length < 1) { return }
+		let x = i.split('=')
+		let name = x[0]
+		let value = x[1] ?? ""
+		obj[name] = value.replaceAll('"', '')
+	})
+	return obj
+}
+export function to_lisp_args(y: Record<string, string>) {
+	let x =''
+	Object.entries(y).forEach(([key, value]) => { 
+		if (key == 'name') {
+			x = value + ' ' + x 
+		} else {
+
+			// If it isnt a number add quotes
+			if (isNaN(Number(value))) {
+				value = outputStrings(value)
+			}
+
+			x +=`:${key} ${value} `
+		}
+	})
+	return x
 }
 
-
-async function useBlockTransformer(data: string, obj: TransformerList, append_args='') {
+async function useBlockTransformer(data: string, obj: TransformerList, state: State) {
 	if (Object.keys(obj).length <= 0) { return data }
-	let regex=new RegExp(`[\t\ ]*#(${Object.keys(obj).map(x => x.toUpperCase().replace('_', '-')).join('|')})+([^\n]+)?([^]+?)#END \\1`, 'g')
-	while(true) {
-		data =  await replaceAsync(data, regex, async (match: string, tag: string, args: string, value: string) => {
+	let regex = new RegExp(`<(${Object.keys(obj).map(v => v.toLowerCase().replace('_','-')).join('|')})(.*?)>([^]+?)</\\1>`, 'g') // MATCH ENTIRE BLOCK
+	// console.log(regex) // DEBUG
+	while (true) {
+		data =  data.replace(regex, (match: string, tag: string, args: string, value: string) => {
 			tag = tag.toLowerCase().replaceAll('-', '_')
-			args = (args ?? '') + append_args
+			
 			try {
-				return (obj[tag] ? obj[tag].fn(value, args) : value)
+				return (obj[tag] ? obj[tag].fn(value,state,parse_args(args)) : value)
 			} catch (err) {
 				fail(`Transformer: ${tag} failed to transform: ${value} ~ ${err}`);
 				return match
@@ -69,65 +98,49 @@ async function useBlockTransformer(data: string, obj: TransformerList, append_ar
 type TransformerList = Record<string, Transformer>;
 class Context {
 	data: string;
-
-	inlineTransformers: TransformerList;
-	simpleBlockTransformers: TransformerList;
-	complexBlockTransformers: TransformerList; 
-	resolvedBlockTransformers: TransformerList;
-	endBlockTransformers: TransformerList;
+	state: State;
+	transformers: TransformerList;
 
 	constructor(file_path: string) {
 		this.data = readFileSync(file_path, 'utf-8');
-		this.inlineTransformers = filterObj(builtin,  (v) => v.inline && v.importance == 0)
-		this.simpleBlockTransformers = filterObj(builtin, v => v.importance == 0 && !v.inline)
-		this.complexBlockTransformers = filterObj(builtin, v => v.importance == 2)
-		this.resolvedBlockTransformers =  filterObj(builtin, v => v.importance == 1)
-		this.endBlockTransformers = filterObj(builtin, v => v.importance == 3)
+		this.transformers = { ...builtin }
+		this.state = {
+			variables: this.data.match(/(?<=<(script-)?var.*?name=")[^"]+/g) ?? []
+		}
+		// console.log(this.transformers) // DEBUG
 	}
 	
 	preTransform() {
-		if (outputMode == 'ascii') {
-			warn("Using ascii only chars, in accordance with `--ascii`")
-			this.data = this.data.replace(/[^\x00-\x7F]/g, "");
-		}
 
-		if (!(outputMode == 'ascii') && !process.argv.includes('--emoji-fix=no')) {
-			warn("Stripping all emojis (they break boxes), to ignore use `--no-fix-emoji`")
-			this.data = this.data.replace(/\p{Extended_Pictographic}/u, "")
-		}
+		// Remove tags that are no longer needed
+		this.data = this.data.replace(/<\/?(eww|includes|definitions|variables|windows|widget)>/g, '')
+		
+		// Transform comments
+		this.data = this.data.replace(/<!--([^]+?)-->/g, (_:string,match:string)=> match.split('\n').map(e => ';; '+e.trim()).join('\n'))
 
 		this.data = this.data.replaceAll('\t', '        ') // Sorry tab gods
-	}
-
-	getLongest() {
-		return this.data.split('\n').reduce((a, v) => length(v)>a?length(v):a, 0).toString()
+	
+		this.data = this.data.replace(/(?<=>)[^]+?(?=<)/g, outputStrings)
 	}
 
 	async transform() {
-		
 		// Replace Emoji & Unicode (if --ascii)
 		this.preTransform()
 
-		// -- Inline Processing --
-		const matchInline = /#(\w+) (.*)#/g 
+		// -- Simple Processing --
+		this.data = await useBlockTransformer(this.data, this.transformers, this.state)
+
+		const matchAnyBlocks = /<(\S+)(.*?)>([^]+?)<\/\1>/g
 		while (true) {
-			this.data = await replaceAsync(this.data, matchInline, async (_, tag: string, value: string) => {
-				tag = tag.toLowerCase()
-				return (this.inlineTransformers[tag] ? this.inlineTransformers[tag].fn(value.trim()) : value)
-			})
-			if (!matchInline.test(this.data)) { break }
+			this.data = this.data.replace(matchAnyBlocks, (_, tag: string, arg:string, value: string) => '(' + tag + ' ' + to_lisp_args(parse_args(arg)) + value + ')')
+			if (!matchAnyBlocks.test(this.data)) { break }
 		}
 
-		// -- Simple Processing --
-		this.data = await useBlockTransformer(this.data, this.simpleBlockTransformers) 
-
-		// -- Complex Processing -- 
-		this.data = await useBlockTransformer(this.data, this.complexBlockTransformers) 
-
-		// -- Relative Processing --
-		this.data = await useBlockTransformer(this.data, this.resolvedBlockTransformers, this.getLongest()) 
-		this.data = await useBlockTransformer(this.data, this.endBlockTransformers, this.getLongest())
-
+		const matchOneWord = /<(\S+)(.*)\/>/g
+		while (true) {
+			this.data = this.data.replace(matchOneWord, (_, tag: string, args: string) => '('+tag+' '+to_lisp_args(parse_args(args))+')')
+			if (!matchOneWord.test(this.data)) { break }
+		}
 	}
 }
 
