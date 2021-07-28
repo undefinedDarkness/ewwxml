@@ -22,16 +22,18 @@ export const window: Transformer = {
 	importance: Importance.Anywhere,
 	fn: (s: string, state, arg) => {
 		
-		const geometry = to_lisp_args(parse_args(s.match(/(?<=<geometry).*(?=\/>)/)![0]!)) // chaining functions.. my favourite thing ever
+		const geometry = /<geometry/.test(s) ? to_lisp_args(parse_args(s.match(/(?<=<geometry).*(?=\/>)/)![0]!)) : '' // chaining functions.. my favourite thing ever
 		const reserve = (() => {
+			if (/<reserve/.test(s)) {
 			const reserve_args = parse_args(s.match(/(?<=<reserve).*(?=\/>)/)![0]!)
 			delete reserve_args['layer']
 			return to_lisp_args(reserve_args)
+			} return ''
 		})()
 		s = s.replace(/<(geometry|reserve).*\/>/g, '')
 
 		return `(defwindow ${to_lisp_args(arg)}
-						:geometry (geometry ${geometry})
-						:reserve (structs ${reserve}) ${s})`
+						${geometry.length > 0 ? `:geometry (geometry ${geometry})` : ''}
+						${reserve.length > 0 ? `:reserve (structs ${reserve})` : '' } ${s})`
 	}
 }

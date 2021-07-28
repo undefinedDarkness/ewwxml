@@ -6,6 +6,8 @@ export function outputStrings(_: string) {
 
 	// console.log(_)
 	// TODO: Deal with only one ref
+	// TODO: Deal with indentation
+	// TODO: Deal with vars right next to each other
 
 	// Strip comments and check if is only spaces 
 	if (_.replace(/;;.*/g, '').trim().length == 0) {
@@ -113,7 +115,7 @@ class Context {
 	preTransform() {
 
 		// Remove tags that are no longer needed
-		this.data = this.data.replace(/<\/?(eww|includes|definitions|variables|windows|widget)>/g, '')
+		this.data = this.data.replace(/<\/?(eww|includes|definitions|variables|windows|includes|widget).*>/g, '')
 		
 		// Transform comments
 		this.data = this.data.replace(/<!--([^]+?)-->/g, (_:string,match:string)=> match.split('\n').map(e => ';; '+e.trim()).join('\n'))
@@ -154,3 +156,5 @@ const end = performance.now()
 console.log(instance.data)
 console.error(`Finished transforming in \u001b[1m${Math.floor(end-start)}\u001b[0mms`)
 })()
+
+// TODO: Make output not trash
