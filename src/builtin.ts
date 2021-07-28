@@ -34,6 +34,6 @@ export const window: Transformer = {
 
 		return `(defwindow ${to_lisp_args(arg)}
 						${geometry.length > 0 ? `:geometry (geometry ${geometry})` : ''}
-						${reserve.length > 0 ? `:reserve (structs ${reserve})` : '' } ${s})`
+						${reserve.length > 0 ? `:reserve (struts ${reserve})` : '' } ${s})`
 	}
 }

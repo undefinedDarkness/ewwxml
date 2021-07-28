@@ -1,0 +1,240 @@
+<eww>
+    <includes>
+
+    </includes>
+
+    <definitions>
+	<!-- bar configuration -->
+
+	<!-- the bar itself -->
+	<def name="bar0">
+	    <box orientation="h" hexpand="false" space-evenly="true">
+    		<leftside/>
+	   	  <divider/>
+		    <centerside/>
+		    <divider/>
+		    <rightside/>
+	    </box>
+	</def>
+
+	<!-- second monitor bar --> 
+	<def name="bar1" class="bar">
+		<box orientation="h" hexpand="false" space-evenly="true">
+			<divider/>
+			<centerside/>
+			<divider/>
+	    </box>
+	</def>
+
+	<def name="test">
+	    <box orientation="h" hexpand="false">
+		<test/>
+	    </box>
+	</def>
+
+	<!-- defining sections of eww bar -->
+
+	<def name="leftside" orientation="h" space-evenly="false" halign="start">
+	    <box class="workspaces">
+	  	  <workspaces/>
+	    </box>
+	</def>
+
+	<def name="centerside" orientation="h" space-evenly="true" halign="center">
+	    <box class="time">
+		    <time/>
+	    </box>
+	</def>
+
+	<def name="rightside" orientation="h" space-evenly="false" halign="start">
+	    <box class="sysinfo">
+		    <sysinfo/>
+	    </box>
+	</def>
+
+	<!-- left side modules -->
+	<def name="workspaces" halign="start">
+	    <literal content="{{getWorkspaces}}"></literal>
+	</def>
+
+	<!-- center modules -->
+	<def name="time" halign="center">
+	    <box>{{getTime}}</box>
+	</def>
+
+	<!-- right side modules -->
+	<def name="sysinfo" halign="end">
+	    <box space-evenly="false">
+		    |<battery/>|
+		    <ram/>|
+		    <disk/>|
+		    <network/>
+		</box>
+	    </def>
+
+	    <!-- system information -->
+	    <!-- battery -->
+	    <def name="battery" halign="end">
+		<box class="sysinfo bat">{{batStatus}} {{EWW_BATTERY.BAT0.capacity}} %</box>
+	    </def>
+
+	    <!-- disk displayed in GB -->
+	    <def name="disk" halign="end">
+		<box class="sysinfo sect"> {{round((EWW_DISK["/"].free) / (1024 * 1024 * 1024), 0)}}</box> 
+	    </def>
+
+	    <!-- ram -->
+	    <def name="ram" halign="end">
+		<box class="sysinfo sect"> {{EWW_RAM}}</box>
+	    </def>
+
+	    <!-- network information -->
+	    <def name="network" haligh="end">
+		<box class="sysinfo sect">  {{round((EWW_NET[getNet].NET_UP) * 8 / (1024 * 1024), 1)}}  {{round((EWW_NET[getNet].NET_DOWN) * 8 / (1024 * 1024), 1)}}</box>
+	    </def>
+      <!-- TODO: handle multiple network connections -->
+
+	    <!-- divider for more even spacing and stuff -->
+	    <def name="divider">
+		<box class="divider"> </box>
+	    </def>
+
+	    <!-- end of bar section -->
+
+	    <!-- widget collection section -->
+
+	    <def name="main">
+		<box>
+		<box spacing="10px" space-evenly="True" valign="start" halign="center">
+		    <topLeft/> 
+		    <topRight/>
+		</box>
+		<box spacing="10px" space-evenly="True" valign="end" halign="center">
+		    <bottomLeft/> 
+		    <bottomRight/>
+		</box>
+	    </box>
+	    </def>
+
+
+		<def name="topLeft">
+			<box class="userProfile">
+				{{userInfo}}
+			</box>
+		</def>
+
+		<def name="topRight">
+		    <box>
+			<box halign="start">{{fetch}}</box>
+			<box name="time" halign="end" orientation="v">
+				{{hour}}
+				{{min}}{{sec}}
+			</box>
+		    </box>
+		</def>
+
+		<def name="bottomLeft">
+		    <box>
+		    <box name="cal" orientation="h">
+			    <calendar day="1" month="1" year="1970"/>
+			</box>
+			<box name="remanders" orientation="h">{{remander}}</box>
+		    </box>
+		</def>
+		
+		<def name="bottomRight">
+			<box>this is bottom right</box>
+		</def>
+
+	    <!-- end of widget collection section -->
+
+
+	    <!-- test section -->
+
+	    <def name="test">
+		<box class="test">
+		    This is for testing, please ignore me!
+		</box>
+	    </def>
+
+	    <!-- end of test section -->
+
+	</definitions>
+
+	<variables>
+	<!-- script variables for bar -->
+	    <script-var name="getWorkspaces">./scripts/workspaces/target/release/workspaces</script-var>
+	    <script-var name="getTime" interval="1s">date +"%R:%S | %a %d %b %Y"</script-var>
+	    <script-var name="getNet" interval="2s">./scripts/getNet.sh</script-var>
+	    <script-var name="batStatus" interval="1m">./scripts/batStatus.sh</script-var>
+
+	    <!-- script variables for widget -->
+
+		<!-- custom scripts/programs -->
+		<script-var name="remander" interval="1m">echo remander</script-var> <!-- yes i will implement remander for this -->
+		<script-var name="userInfo">echo userinfo</script-var> <!-- create script that outputs a svg with user information -->
+		<script-var name="notifs" interval="1s">echo notifications</script-var>
+
+		<!-- some clock stuff -->
+		<script-var name="hour"> date +%h</script-var>
+		<script-var name="min"> date +%m</script-var>
+		<script-var name="sec"> date +%s</script-var>
+
+	</variables>
+
+	<!-- loaded windows and their settings -->
+	<windows>
+	    <!-- bar -->
+	    <!-- main screen -->
+	    <window name="bar0" stacking="bt" screen="0" exclusive="true">
+		<geometry anchor="top center" width="100%" height="25px"/>
+		<widget>
+		    <bar0/>
+		</widget>
+	    </window>
+
+	    <!-- for external monitor 1 -->
+	    <window name="bar1" stacking="bt" screen="1" exclusive="true">
+		<geometry anchor="top center" width="100%" height="25px"/>
+		<widget>
+		    <bar1/>
+		</widget>
+	    </window>
+
+		<!-- for external monitor 2 -->
+		<window name="bar2" stacking="bt" screen="2" exclusive="true">
+		<geometry anchor="top center" width="100%" height="25px"/>
+		<widget>
+		    <bar1/>
+		</widget>
+	    </window>
+		<!-- end bar -->
+
+	    <window name="widget-collection" stacking="ov" screen="1" exclusive="true">
+		<geometry anchor="center center" width="80%" height="80%"/>
+		<widget name="top-right">
+			<test/>
+		</widget>
+		<widget name="top-left">
+			<test/>
+		</widget>
+		<widget name="bottom-right">
+			<test/>
+		</widget>
+		<widget name="bottom-left">
+			<test/>
+		</widget>
+	    </window>
+
+	    <!-- test -->
+
+	    <window name="test" stacking="bg" screen="1" exclusive="true">
+		<geometry anchor="bottom center" x="0px" y="0px" width="500px" height="200px"/>
+		<widget>
+		    <test/>
+		</widget>
+	</window>
+
+	    <!-- end test -->
+	</windows>
+    </eww>
