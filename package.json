@@ -3,14 +3,14 @@
   "version": "1.0.0",
   "description": "",
   "main": "main.js",
-  "devDependencies": {},
+  "devDependencies": {
+    "@types/node": "^16.4.7"
+  },
   "type": "module",
   "scripts": {
     "build": "tsc main.ts --sourcemap"
   },
   "author": "",
   "license": "ISC",
-  "dependencies": {
-    "@types/node": "^16.3.3"
-  }
+  "dependencies": {}
 }

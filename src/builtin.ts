@@ -33,7 +33,8 @@ export const window: Transformer = {
 		s = s.replace(/<(geometry|reserve).*\/>/g, '')
 
 		return `(defwindow ${to_lisp_args(arg)}
-						${geometry.length > 0 ? `:geometry (geometry ${geometry})` : ''}
-						${reserve.length > 0 ? `:reserve (struts ${reserve})` : '' } ${s})`
+			    ${geometry.length > 0 ? `:geometry (geometry ${geometry})` : ''}
+			    ${reserve.length > 0 ? `:reserve (struts ${reserve})` : '' } 
+				${s.trim()})`
 	}
 }

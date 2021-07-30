@@ -4,7 +4,8 @@ import * as builtin from './builtin.js'
 
 export function outputStrings(_: string) {
 
-	// console.log(_)
+
+	//console.log('`' + _ + '`')
 	// TODO: Deal with only one ref
 	// TODO: Deal with indentation
 	// TODO: Deal with vars right next to each other
@@ -16,10 +17,23 @@ export function outputStrings(_: string) {
 
 	// Check for variables
 	if (/(?<!'|".*){{.*}}(?!.*'|")/.test(_)) {
-		return '{ "' + _.replaceAll('{{', '" + ').replaceAll('}}', ' + "') + '" }' // a bit of a ugly hack but it saves me work 
+	
+		let out = ''
+		let items = _.split(/{{|}}/).filter(f => f!='')
+		for (let i = 0 ; i < items.length ; i++) {
+			if (i % 2 == 0) {
+				// Is a variable
+				out += `+ ${items[i].trim()}`
+			} else {
+				// Isnt
+				out += `+ "${items[i].trim()}"`
+			}
+
+		}
+
 	}
 
-	return '"' + _ + '"'
+	return '"' + _.trim() + '"'
 }
 
 export const enum Importance {
@@ -55,11 +69,11 @@ export function parse_args(args: string) {
 		let x = i.split('=')
 		let name = x[0]
 		let value = x[1] ?? ""
-		obj[name] = value.replaceAll('"', '')
+		obj[name] = value.replace(/"/g, '')
 	})
 	return obj
 }
-export function to_lisp_args(y: Record<string, string>) {
+export function to_lisp_args(y: Record<string, string>, z=' ') {
 	let x =''
 	Object.entries(y).forEach(([key, value]) => { 
 		if (key == 'name') {
@@ -71,7 +85,7 @@ export function to_lisp_args(y: Record<string, string>) {
 				value = outputStrings(value)
 			}
 
-			x +=`:${key} ${value} `
+			x +=`:${key} ${value}${z}`
 		}
 	})
 	return x
@@ -83,7 +97,7 @@ async function useBlockTransformer(data: string, obj: TransformerList, state: St
 	// console.log(regex) // DEBUG
 	while (true) {
 		data =  data.replace(regex, (match: string, tag: string, args: string, value: string) => {
-			tag = tag.toLowerCase().replaceAll('-', '_')
+			tag = tag.toLowerCase().replace(/-/g, '_')
 			
 			try {
 				return (obj[tag] ? obj[tag].fn(value,state,parse_args(args)) : value)
@@ -118,11 +132,17 @@ class Context {
 		this.data = this.data.replace(/<\/?(eww|includes|definitions|variables|windows|includes|widget).*>/g, '')
 		
 		// Transform comments
-		this.data = this.data.replace(/<!--([^]+?)-->/g, (_:string,match:string)=> match.split('\n').map(e => ';; '+e.trim()).join('\n'))
+		this.data = this.data.replace(/<!--([^]*?)-->/g, (_:string,match:string)=> match.split('\n').map(e => ';; '+e.trim()).join('\n'))
 
-		this.data = this.data.replaceAll('\t', '        ') // Sorry tab gods
+		this.data = this.data.replace(/	/g, '        ') // Sorry tab gods
 	
-		this.data = this.data.replace(/(?<=>)[^]+?(?=<)/g, outputStrings)
+		this.data = this.data.replace(/(?<=>)[^<>]+?(?=<)/g, outputStrings)
+	}
+
+	prettify () {
+		this.data = this.data.replace(/\s+\)/g, ')')  // get rid of stuff like ` )` to `)`
+		this.data = this.data.replace(/\)(\s+)\(/g, (_: string, space: string) => `)\n${space.replace(/\n/g, '')}(`) // fix weird ()
+		this.data = this.data.replace(/\n(\s*["}]+?\)+)/g, (_: string, x: string) => x) // more of that
 	}
 
 	async transform() {
@@ -132,7 +152,7 @@ class Context {
 		// -- Simple Processing --
 		this.data = await useBlockTransformer(this.data, this.transformers, this.state)
 
-		const matchAnyBlocks = /<(\S+)(.*?)>([^]+?)<\/\1>/g
+		const matchAnyBlocks = /<(\S+)(.*?)>([^]*?)<\/\1>/g
 		while (true) {
 			this.data = this.data.replace(matchAnyBlocks, (_, tag: string, arg:string, value: string) => '(' + tag + ' ' + to_lisp_args(parse_args(arg)) + value + ')')
 			if (!matchAnyBlocks.test(this.data)) { break }
@@ -143,6 +163,8 @@ class Context {
 			this.data = this.data.replace(matchOneWord, (_, tag: string, args: string) => '('+tag+' '+to_lisp_args(parse_args(args))+')')
 			if (!matchOneWord.test(this.data)) { break }
 		}
+
+		this.prettify()
 	}
 }
 
