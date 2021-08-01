@@ -2,6 +2,15 @@ import { readFileSync } from 'fs'
 import { performance } from 'perf_hooks'
 import * as builtin from './builtin.js'
 
+export function special_tag_handling(tag: string) {
+	switch (tag.trim()) {
+		case "var":
+			return "defvar"
+		default:
+			return tag
+	}
+}
+
 export function outputStrings(_: string) {
 
 
@@ -154,7 +163,7 @@ class Context {
 
 		const matchAnyBlocks = /<(\S+)(.*?)>([^]*?)<\/\1>/g
 		while (true) {
-			this.data = this.data.replace(matchAnyBlocks, (_, tag: string, arg:string, value: string) => '(' + tag + ' ' + to_lisp_args(parse_args(arg)) + value + ')')
+			this.data = this.data.replace(matchAnyBlocks, (_, tag: string, arg:string, value: string) => '(' + special_tag_handling(tag) + ' ' + to_lisp_args(parse_args(arg)) + value + ')')
 			if (!matchAnyBlocks.test(this.data)) { break }
 		}
 

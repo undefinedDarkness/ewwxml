@@ -1,0 +1,16 @@
+(def-widget something [arg]
+  (box {:class arg 
+        :halign "start"}
+    (text "Click this button:")
+    (button {:onclick "notify-send 'test' 'message'"}
+      (text "some_script"))))
+
+(def-var some_var "foo")
+(def-script-var some_script {:interval "1s"}
+  "date | sed 's/:/X/g' | rev")
+
+(def-window foo
+  {:anchor "center"
+   :width "100px"
+   :height "10%"}
+  (something {:arg some_var}))
