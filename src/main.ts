@@ -24,22 +24,19 @@ export function outputStrings(_: string) {
 		return _
 	}
 
+	// Check for number
+	if (!isNaN(Number(_.trim()))) {
+		return _.trim()
+	}
+
+	// If is only one var-ref
+	if (/^{{[^}]+?}}$/.test(_.trim())) {
+		return _.replace(/}}|{{/, '').trim()
+	}
+
 	// Check for variables
 	if (/(?<!'|".*){{.*}}(?!.*'|")/.test(_)) {
-	
-		let out = ''
-		let items = _.split(/{{|}}/).filter(f => f!='')
-		for (let i = 0 ; i < items.length ; i++) {
-			if (i % 2 == 0) {
-				// Is a variable
-				out += `+ ${items[i].trim()}`
-			} else {
-				// Isnt
-				out += `+ "${items[i].trim()}"`
-			}
-
-		}
-
+		return `"` + _.replace(/{{/g, '${').replace(/}}/g, '}') + `"`
 	}
 
 	return '"' + _.trim() + '"'
@@ -82,19 +79,17 @@ export function parse_args(args: string) {
 	})
 	return obj
 }
-export function to_lisp_args(y: Record<string, string>, z=' ') {
+export function to_lisp_args(y: Record<string, string>, seperator=' ') {
 	let x =''
 	Object.entries(y).forEach(([key, value]) => { 
 		if (key == 'name') {
 			x = value + ' ' + x 
 		} else {
 
-			// If it isnt a number add quotes
-			if (isNaN(Number(value))) {
-				value = outputStrings(value)
-			}
+			// CHANGE: Now simply pass to quote string -- If it isnt a number add quotes
+			value = outputStrings(value)
 
-			x +=`:${key} ${value}${z}`
+			x +=`:${key} ${value}${seperator}`
 		}
 	})
 	return x
