@@ -8,6 +8,7 @@ You'll need [node](https://nodejs.org/en/download/package-manager/) & npm instal
 ```
 git clone https://github.com/undefinedDarkness/ewwxml
 cd ewwxml
+npm install
 npm run build
 node out/main.js <PATH-TO-EWW-XML-FILE> > <PATH-TO-YUCK-FILE> 
 ```
