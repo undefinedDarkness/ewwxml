@@ -4,13 +4,12 @@
   "description": "",
   "main": "main.js",
   "devDependencies": {
-    "@types/node": "^16.4.7"
+    "@types/node": "^16.4.7",
+    "typescript": "^4.3.5"
   },
-  "type": "module",
   "scripts": {
-    "build": "tsc main.ts --sourcemap"
+    "build": "npx tsc"
   },
   "author": "",
-  "license": "ISC",
-  "dependencies": {}
+  "license": "ISC"
 }
