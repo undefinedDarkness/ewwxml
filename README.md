@@ -10,15 +10,13 @@ git clone https://github.com/undefinedDarkness/ewwxml
 cd ewwxml
 npm install
 npm run build
-node out/main.js <PATH-TO-EWW-XML-FILE> > <PATH-TO-YUCK-FILE> 
+node out/main.js <PATH-TO-EWW-XML-FILE> >> <PATH-TO-YUCK-FILE> # Do not forget the >> in the middle.
 ```
 
 
 ## TODO:
-[x] Fix inline strings
-[ ] Make output not garbage
-[ ] Make it easier to use
-[ ] Fix minor differences
-[ ] Test more throughly (on Arxava & adi's config)
-
-
+- [x] Fix inline strings
+- [ ] Make output not garbage
+- [ ] Make it easier to use
+- [ ] Fix minor differences
+- [ ] Test more throughly (on Arxava & adi's config)
