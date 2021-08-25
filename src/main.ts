@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs'
+import { readFileSync, existsSync, writeFileSync } from 'fs'
 import { performance } from 'perf_hooks'
 import * as builtin from './builtin.js'
 
@@ -18,7 +18,7 @@ export function outputStrings(_: string) {
 
 	// Strip comments and check if is only spaces 
 	if (_.replace(/;;.*/g, '').trim().length == 0) {
-		return _
+return _
 	}
 
 	// Check for number
@@ -41,9 +41,9 @@ export function outputStrings(_: string) {
 
 export const enum Importance {
 	Anywhere = 0,
-	ResolveChildren = 1,
-	WillResolve = 2,
-	RunAtEnd = 3
+		ResolveChildren = 1,
+		WillResolve = 2,
+		RunAtEnd = 3
 }
 
 export interface Transformer {
@@ -94,7 +94,7 @@ async function useBlockTransformer(data: string, obj: TransformerList, state: St
 	while (true) {
 		data =  data.replace(regex, (match: string, tag: string, args: string, value: string) => {
 			tag = tag.toLowerCase().replace(/-/g, '_')
-			
+
 			try {
 				return (obj[tag] ? obj[tag].fn(value,state,parse_args(args)) : value)
 			} catch (err) {
@@ -113,32 +113,29 @@ class Context {
 	state: State;
 	transformers: TransformerList;
 
-	constructor(file_path: string) {
+	constructor(file_path: string | number) {
 		this.data = readFileSync(file_path, 'utf-8');
 		this.transformers = { ...builtin }
 		this.state = {
 			variables: this.data.match(/(?<=<(script-)?var.*?name=")[^"]+/g) ?? []
 		}
 	}
-	
+
 	preTransform() {
 
 		// Remove tags that are no longer needed
 		this.data = this.data.replace(/<\/?(eww|includes|definitions|variables|windows|includes|widget).*>/g, '')
-		
-		
 
 		// not sure if I need this any more: this.data = this.data.replace(/\t/g, '        ') // Sorry tab gods
-	
-		this.data = this.data.replace(/(?<=>)[^<>]+?(?=<)/g, outputStrings)
+		this.data = this.data.replace(/(?<=>)[^<>]+?(?=<)/g, outputStrings) // I think this goes after intline text.
 	}
 
 	prettify () {
-		this.data = this.data.replace(/\s+\)/g, ')')  // get rid of stuff like ` )` to `)`
-		this.data = this.data.replace(/\)(\s+)\(/g, (_: string, space: string) => `)\n${space.replace(/\n/g, '')}(`) // fix weird ()
-		this.data = this.data.replace(/\n(\s*["}]+?\)+)/g, (_: string, x: string) => x) // more of that
 		// Transform comments
 		this.data = this.data.replace(/<!--([^]*?)-->/g, (_:string,match:string) => match.split('\n').map(e => ';; '+e).join('\n'))
+		this.data = this.data.replace(/(?<!;;.*)\s+\)/g, ')')  // get rid of stuff like ` )` to `)`
+		this.data = this.data.replace(/\)(\s+)\(/g, (_: string, space: string) => `)\n${space.replace(/\n/g, '')}(`) // fix weird ()
+		this.data = this.data.replace(/\n(\s*["}]+?\)+)/g, (_: string, x: string) => x) // more of that
 	}
 
 	async transform() {
@@ -165,14 +162,29 @@ class Context {
 }
 
 (async () => {
-let instance = new Context(process.argv[2])
 
-const start = performance.now()
-await instance.transform()
-const end = performance.now()
+	const input_file = process.argv[2]
+	const output_file = process.argv[3]
+	if (input_file != '-' && !existsSync(input_file)) {
+		console.error(`\u001b[31mERROR\u001b[0m: Input file: ${input_file} does not exist. If you meant to use STDIN, use \`-\` as a argument`)
+		return
+	}
 
-console.log(instance.data)
-console.error(`Finished transforming in \u001b[1m${Math.floor(end-start)}\u001b[0mms`)
+	if (input_file == '-') {
+		console.error('Reading From STDIN')
+	}
+	let instance = new Context(input_file == '-' ? 0 : input_file) // read from stdin if '-' is given
+
+	const start = performance.now()
+	await instance.transform()
+	const end = performance.now()
+
+	if (output_file) {
+		writeFileSync(output_file, instance.data)
+	} else {
+		console.log(instance.data)
+	}
+	console.error(`Finished transforming in \u001b[1m${Math.floor(end-start)}\u001b[0mms`)
 })()
 
 // TODO: Make output not trash
