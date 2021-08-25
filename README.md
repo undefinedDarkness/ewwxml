@@ -19,4 +19,4 @@ node out/main.js <PATH-TO-EWW-XML-FILE> >> <PATH-TO-YUCK-FILE> # Do not forget t
 - [ ] Make output not garbage
 - [ ] Make it easier to use
 - [ ] Fix minor differences
-- [ ] Test more throughly (on Arxava & adi's config)
+- [ ] Test more throughly (on Axarva & adi's configs)
