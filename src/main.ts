@@ -13,11 +13,8 @@ export function special_tag_handling(tag: string) {
 
 export function outputStrings(_: string) {
 
-
-	//console.log('`' + _ + '`')
-	// TODO: Deal with only one ref
-	// TODO: Deal with indentation
-	// TODO: Deal with vars right next to each other
+	// Escape double quotes
+	_ = _.replace(/"/g, '\\"')
 
 	// Strip comments and check if is only spaces 
 	if (_.replace(/;;.*/g, '').trim().length == 0) {
@@ -31,7 +28,7 @@ export function outputStrings(_: string) {
 
 	// If is only one var-ref
 	if (/^{{[^}]+?}}$/.test(_.trim())) {
-		return _.replace(/}}|{{/, '').trim()
+		return _.replace(/}}|{{/g, '').trim()
 	}
 
 	// Check for variables
@@ -68,7 +65,6 @@ export function warn (msg: string) {
 }
 
 export function parse_args(args: string) {
-	// console.log(args)
 	let obj: Record<string, string> = {}
 	args.match(/(?:[^\s"]+|"[^"]*")+/g)?.forEach(i => {
 		if (i.length < 1) { return }
@@ -85,10 +81,7 @@ export function to_lisp_args(y: Record<string, string>, seperator=' ') {
 		if (key == 'name') {
 			x = value + ' ' + x 
 		} else {
-
-			// CHANGE: Now simply pass to quote string -- If it isnt a number add quotes
 			value = outputStrings(value)
-
 			x +=`:${key} ${value}${seperator}`
 		}
 	})
@@ -98,7 +91,6 @@ export function to_lisp_args(y: Record<string, string>, seperator=' ') {
 async function useBlockTransformer(data: string, obj: TransformerList, state: State) {
 	if (Object.keys(obj).length <= 0) { return data }
 	let regex = new RegExp(`<(${Object.keys(obj).map(v => v.toLowerCase().replace('_','-')).join('|')})(.*?)>([^]+?)</\\1>`, 'g') // MATCH ENTIRE BLOCK
-	// console.log(regex) // DEBUG
 	while (true) {
 		data =  data.replace(regex, (match: string, tag: string, args: string, value: string) => {
 			tag = tag.toLowerCase().replace(/-/g, '_')
@@ -127,7 +119,6 @@ class Context {
 		this.state = {
 			variables: this.data.match(/(?<=<(script-)?var.*?name=")[^"]+/g) ?? []
 		}
-		// console.log(this.transformers) // DEBUG
 	}
 	
 	preTransform() {
@@ -135,10 +126,9 @@ class Context {
 		// Remove tags that are no longer needed
 		this.data = this.data.replace(/<\/?(eww|includes|definitions|variables|windows|includes|widget).*>/g, '')
 		
-		// Transform comments
-		this.data = this.data.replace(/<!--([^]*?)-->/g, (_:string,match:string)=> match.split('\n').map(e => ';; '+e.trim()).join('\n'))
+		
 
-		this.data = this.data.replace(/	/g, '        ') // Sorry tab gods
+		// not sure if I need this any more: this.data = this.data.replace(/\t/g, '        ') // Sorry tab gods
 	
 		this.data = this.data.replace(/(?<=>)[^<>]+?(?=<)/g, outputStrings)
 	}
@@ -147,6 +137,8 @@ class Context {
 		this.data = this.data.replace(/\s+\)/g, ')')  // get rid of stuff like ` )` to `)`
 		this.data = this.data.replace(/\)(\s+)\(/g, (_: string, space: string) => `)\n${space.replace(/\n/g, '')}(`) // fix weird ()
 		this.data = this.data.replace(/\n(\s*["}]+?\)+)/g, (_: string, x: string) => x) // more of that
+		// Transform comments
+		this.data = this.data.replace(/<!--([^]*?)-->/g, (_:string,match:string) => match.split('\n').map(e => ';; '+e).join('\n'))
 	}
 
 	async transform() {
