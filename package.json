@@ -1,15 +1,15 @@
 {
-  "name": "playground",
+  "name": "ewwxml",
   "version": "1.0.0",
   "description": "",
   "main": "main.js",
   "devDependencies": {
-    "@types/node": "^16.7.1",
+    "@types/node": "^16.10.3",
     "typescript": "^4.3.5"
   },
   "scripts": {
     "build": "npx tsc"
   },
   "author": "",
-  "license": "ISC"
+  "license": "MIT"
 }

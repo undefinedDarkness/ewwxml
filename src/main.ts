@@ -144,18 +144,23 @@ class Context {
 
 		// -- Simple Processing --
 		this.data = await useBlockTransformer(this.data, this.transformers, this.state)
-
-		const matchAnyBlocks = /<(\S+)(.*?)>([^]*?)<\/\1>/g
+		
+		const matchOneWord = /<(\S+)(.*)\/>/g
+		while (true) {
+			this.data = this.data.replace(matchOneWord, (_, tag: string, args: string) => {
+				console.log('>> '+_)
+				return '('+tag+' '+to_lisp_args(parse_args(args))+')'
+			})
+			if (!matchOneWord.test(this.data)) { break }
+		}
+		
+		const matchAnyBlocks = /<(\S+)(.*?)>([^<]*?)<\/\1>/g
 		while (true) {
 			this.data = this.data.replace(matchAnyBlocks, (_, tag: string, arg:string, value: string) => '(' + special_tag_handling(tag) + ' ' + to_lisp_args(parse_args(arg)) + value + ')')
 			if (!matchAnyBlocks.test(this.data)) { break }
 		}
 
-		const matchOneWord = /<(\S+)(.*)\/>/g
-		while (true) {
-			this.data = this.data.replace(matchOneWord, (_, tag: string, args: string) => '('+tag+' '+to_lisp_args(parse_args(args))+')')
-			if (!matchOneWord.test(this.data)) { break }
-		}
+		
 
 		this.prettify()
 	}
